@@ -144,10 +144,10 @@ class Environment(object):
         deadline = self.compute_dist(start, destination) * 5
 #        print "Environment.reset(): Trial set up with start = {}, destination = {}, deadline = {}".format(start, destination, deadline)
         
-        self.time_tot = deadline
-#        print "\n***************"
-#        print "Time tot = %i " % self.time_tot
-#        print "***************\n"
+#        self.time_tot = deadline
+##        print "\n***************"
+##        print "Time tot = %i " % self.time_tot
+##        print "***************\n"
         
 
         # Initialize agent(s)
@@ -158,6 +158,17 @@ class Environment(object):
                 'destination': destination if agent is self.primary_agent else None,
                 'deadline': deadline if agent is self.primary_agent else None}
             agent.reset(destination=(destination if agent is self.primary_agent else None))
+
+
+        # Custom
+        self.time_tot = 0
+        self.time_lft = 0
+        self.stt = (-1, 1)
+        self.dst = (-1, 1)
+        self.loc = []
+
+
+
 
     def step(self):
         #print "Environment.step(): t = {}".format(self.t)  # [debug]
