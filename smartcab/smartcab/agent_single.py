@@ -17,8 +17,7 @@ alpha = alpha0
 cnt = 1
 gamma = 0.9
 strategy = 'guided'
-#sgys = ['stubborn', 'random', 'guided', 'qlearner']
-sgys = ['guided', 'qlearner']
+sgys = ['stubborn', 'random', 'guided', 'qlearner']
 stt0 = (2, 2)
 dst0 = (6, 5)
 
@@ -90,12 +89,12 @@ class LearningAgent(Agent):
             # Q-Learner
             act_opt = self.Q[-1].ix[self.state].argmax()
             if act_opt=='stay': act_opt=None
-#            print "Current state = %s, qlearner action = %s" % (self.state, act_opt)
+            print "Current state = %s, qlearner action = %s" % (self.state, act_opt)
             action = act_opt
         
         # Execute action and get reward
         reward = self.env.act(self, action) # this will also update the cab to its new location, I think
-#        print 'Strat %s, action %s, reward %1.2f' % (strategy, action, reward)
+        print 'Strat %s, action %s, reward %1.2f' % (strategy, action, reward)
         
         # Collect data on action, reward, and inputs
         df_tmp = pd.DataFrame({'action': action, 'reward': reward, 'light': inputs['light'], \
@@ -147,11 +146,10 @@ def run():
     # Set up environment and agent
 
     # Now simulate it
-    nS = 2
+    nS = 5
     T_tot = pd.DataFrame({sgy: np.zeros((nS, 1))[:,0] for sgy in sgys})
     T_lft = pd.DataFrame({sgy: np.zeros((nS, 1))[:,0] for sgy in sgys})
-#    sgys = ['stubborn', 'random', 'guided', 'qlearner']
-    sgys = ['guided', 'qlearner']
+    sgys = ['stubborn', 'random', 'guided', 'qlearner']
     
     # Need to change the order of the iteration:
     # Outer should be iter, inner should be strat, because within each you want to start and end at same point but you want that point to change from iter to iter
@@ -172,11 +170,6 @@ def run():
         stt = stt0
         dst = dst0
         
-        # Extract 
-        sim.run(n_trials=1)  # press Esc or close pygame window to quit
-        stt = e.stt
-        dst = e.dst
-        
         for i, sgy in enumerate(sgys):
             
             # Assign strategy
@@ -185,23 +178,20 @@ def run():
             # Run simulation
             print "Agent_pst: Start {}, Dest {}".format(e.stt, e.dst)
 #            if i==0: # this will start each simulation from a different point
-##            if (i==0) & (iS==0): # this will start each simulation from the same different point
+#            if (i==0) & (iS==0): # this will start each simulation from the same different point
 #                sim.run(n_trials=1)  # press Esc or close pygame window to quit
 #                stt = e.stt
 #                dst = e.dst
 #            else:
 #                sim.run(n_trials=1, stt=stt, dst=dst)  # press Esc or close pygame window to quit
-            sim.run(n_trials=1, stt=stt, dst=dst)  # press Esc or close pygame window to quit
             
-#            # Use this to impose starting point and destination
-#            sim.run(n_trials=1, stt=stt, dst=dst)  # press Esc or close pygame window to quit
+            # Use this to impose starting point and destination
+            sim.run(n_trials=1, stt=stt, dst=dst)  # press Esc or close pygame window to quit
                 
             T_tot.ix[iS, sgy] = e.time_tot
             T_lft.ix[iS, sgy] = e.time_lft
         
             print "Finished simulation, strategy = '%s'" % (strategy)
-            print "Time left = %i (iS=%i)" % (e.time_lft, iS)
-            print "Time tot = %i (iS=%i)" % (e.time_lft, iS)
             
             Res[sgy].append(a.A)
             Loc[sgy].append(e.loc)
@@ -248,8 +238,7 @@ if __name__ == '__main__':
         ax.set_ylim((0, 8))
     plt.savefig(r'C:\Users\rghiglia\Documents\ML_ND\ML_ND_Projects\smartcab\Paths_20160606_.png', bbox_inches='tight')
     
-#    tot_time = len(R4[iS]['stubborn'][0]) # this is a shortcut: you should record that properly. This is assuming that this strategy always fails. I think that is ok because the code discards destinations that are too close to the starting point; I didn't get the T_tot and T_lft ...
-    
+    tot_time = len(R4[iS]['stubborn'][0]) # this is a shortcut: you should record that properly. This is assuming that this strategy always fails. I think that is ok because the code discards destinations that are too close to the starting point; I didn't get the T_tot and T_lft ...
     nS = len(R4)
     succ = pd.DataFrame({sgy: np.zeros((nS,1))[:,0] for sgy in sgys})
     fig = plt.figure(figsize=(8,8))
@@ -257,7 +246,7 @@ if __name__ == '__main__':
         ax = fig.add_subplot(2,2,k+1)
         for iS in range(len(L4)):
             ax.plot(R4[iS][sgy][0]['cum_rwd'])
-#            succ.ix[iS, sgy] = 1 if len(R4[iS][sgy][0])<tot_time else 0
+            succ.ix[iS, sgy] = 1 if len(R4[iS][sgy][0])<tot_time else 0
         ax.set_title(sgy.title())
         ax.set_xlim((0, 35))
         ax.set_ylim((-20, 50))

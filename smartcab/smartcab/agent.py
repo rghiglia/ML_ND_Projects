@@ -12,14 +12,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+global stt0, dst0, sgys
+
 alpha0 = 0.5
 alpha = alpha0
 cnt = 1
 gamma = 0.9
 strategy = 'guided'
-sgys = ['stubborn', 'random', 'guided', 'qlearner']
+#sgys = ['stubborn', 'random', 'guided', 'qlearner']
+sgys = ['guided', 'qlearner']
 stt0 = (2, 2)
 dst0 = (6, 5)
+
+global Q_est
+Q_est = pd.DataFrame(1*np.ones((2, 4)), index=['red', 'green'], columns=['left', 'right', 'forward', 'stay'])
 
 class LearningAgent(Agent):
     """An agent that learns to drive in the smartcab world."""
@@ -32,7 +38,11 @@ class LearningAgent(Agent):
         
         # TODO: Initialize any additional variables here
         self.acts = ['left', 'right', 'forward', 'stay']
-        df_tmp = pd.DataFrame(np.zeros((2, 4)), index=['red', 'green'], columns=self.acts)
+#        df_tmp = pd.DataFrame(np.zeros((2, 4)), index=['red', 'green'], columns=self.acts)
+        df_tmp = pd.DataFrame(1*np.ones((2, 4)), index=['red', 'green'], columns=self.acts)
+        global Q_est
+        df_tmp = Q_est
+        
         self.Q = [df_tmp]
         self.A = pd.DataFrame(columns=['action', 'reward', 'cum_rwd', 'light', 'oncoming', 'left', 'right'])
 #        print 'Action frame', self.A
@@ -42,7 +52,11 @@ class LearningAgent(Agent):
         self.planner.route_to(destination)
         # TODO: Prepare for a new trip; reset any variables here, if required
         self.acts = ['left', 'right', 'forward', 'stay']
-        df_tmp = pd.DataFrame(np.zeros((2, 4)), index=['red', 'green'], columns=self.acts)
+#        df_tmp = pd.DataFrame(np.zeros((2, 4)), index=['red', 'green'], columns=self.acts)
+        df_tmp = pd.DataFrame(1*np.ones((2, 4)), index=['red', 'green'], columns=self.acts)
+        global Q_est
+        df_tmp = Q_est
+        
         self.Q = [df_tmp]
         self.A = pd.DataFrame(columns=['action', 'reward', 'cum_rwd', 'light', 'oncoming', 'left', 'right'])
         
@@ -89,12 +103,12 @@ class LearningAgent(Agent):
             # Q-Learner
             act_opt = self.Q[-1].ix[self.state].argmax()
             if act_opt=='stay': act_opt=None
-            print "Current state = %s, qlearner action = %s" % (self.state, act_opt)
+#            print "Current state = %s, qlearner action = %s" % (self.state, act_opt)
             action = act_opt
         
         # Execute action and get reward
         reward = self.env.act(self, action) # this will also update the cab to its new location, I think
-        print 'Strat %s, action %s, reward %1.2f' % (strategy, action, reward)
+#        print 'Strat %s, action %s, reward %1.2f' % (strategy, action, reward)
         
         # Collect data on action, reward, and inputs
         df_tmp = pd.DataFrame({'action': action, 'reward': reward, 'light': inputs['light'], \
@@ -146,14 +160,15 @@ def run():
     # Set up environment and agent
 
     # Now simulate it
-    nS = 5
+    nS = 10
     T_tot = pd.DataFrame({sgy: np.zeros((nS, 1))[:,0] for sgy in sgys})
     T_lft = pd.DataFrame({sgy: np.zeros((nS, 1))[:,0] for sgy in sgys})
-    sgys = ['stubborn', 'random', 'guided', 'qlearner']
+#    sgys = ['stubborn', 'random', 'guided', 'qlearner']
     
     # Need to change the order of the iteration:
     # Outer should be iter, inner should be strat, because within each you want to start and end at same point but you want that point to change from iter to iter
     
+    sto = 1
     for iS in range(nS):
         print 'Iteration {}'.format(iS)
         Res = {sgy: [] for sgy in sgys}
@@ -165,18 +180,23 @@ def run():
         a = e.create_agent(LearningAgent)  # create agent
         e.set_primary_agent(a, enforce_deadline=True)  # set agent to track
         sim = Simulator(e, update_delay=0.011)  # reduce update_delay to speed up simulation
+        sim.run(n_trials=1)  # press Esc or close pygame window to quit
         
-        global stt0, dst0
-        stt = stt0
-        dst = dst0
+#        global stt0, dst0
+#        stt = stt0
+#        dst = dst0
         
+        stt = e.stt
+        dst = e.dst
+        print "stt: ", stt
+        print "dst: ", dst
         for i, sgy in enumerate(sgys):
             
             # Assign strategy
             strategy = sgy
             
             # Run simulation
-            print "Agent_pst: Start {}, Dest {}".format(e.stt, e.dst)
+#            print "Agent_pst: Start {}, Dest {}".format(e.stt, e.dst)
 #            if i==0: # this will start each simulation from a different point
 #            if (i==0) & (iS==0): # this will start each simulation from the same different point
 #                sim.run(n_trials=1)  # press Esc or close pygame window to quit
@@ -193,19 +213,23 @@ def run():
         
             print "Finished simulation, strategy = '%s'" % (strategy)
             
-            Res[sgy].append(a.A)
-            Loc[sgy].append(e.loc)
-            QQQ[sgy].append(a.Q)
+            if sto:
+                Res[sgy].append(a.A)
+                Loc[sgy].append(e.loc)
+                QQQ[sgy].append(a.Q)
+            if sgy=='qlearner':
+                global Q_est
+                Q_est = a.Q[-1]
         
-        R4.append(Res)
-        L4.append(Loc)
-        Q4.append(QQQ)
+        if sto:
+            R4.append(Res)
+            L4.append(Loc)
+            Q4.append(QQQ)
+    
     return (R4, L4, Q4, T_tot, T_lft)
         
     
-    
-    
-    
+   
         
 if __name__ == '__main__':
     R4, L4, Q4, T_tot, T_lft = run()
@@ -217,98 +241,74 @@ if __name__ == '__main__':
     # L4[iS]['stubborn']: path for iteration iS and strategy subborn
     # R4[iS]['stubborn']: data frame with all inputs, action taken, and reward
     
+    plo = 1
+    dt0 = '20160608'
+    if plo:
+        # Would be probably interesting to see the fan of paths if also all the simulations start from the same place
+        global stt0, dst0
+        fig = plt.figure(figsize=(8,8))
+        for (k, sgy) in enumerate(sgys):
+            ax = fig.add_subplot(2,2,k+1)
+            for iS in range(len(L4)):
+                x, y = [], []
+                for z in L4[iS][sgy][0]:
+                    x.append(z[0])
+                    y.append(z[1])
+                ax.plot(x, y)
+#            ax.plot(stt0[0], stt0[1], 'k', marker='o', ms=10, markerfacecolor=None, label='Start')
+#            ax.plot(dst0[0], dst0[1], 'k', marker='s', ms=10, markerfacecolor=None, label='Stop' )
+            ax.set_title(sgy)
+            ax.set_xticks(range(10))
+            ax.set_xticks(range(8))
+            ax.set_xlim((0, 10))
+            ax.set_ylim((0, 8))
+#        plt.savefig(r'C:\Users\rghiglia\Documents\ML_ND\ML_ND_Projects\smartcab\Paths_' + dt0 + '_.png', bbox_inches='tight')
+        
+#        tot_time = len(R4[iS]['stubborn'][0]) # this is a shortcut: you should record that properly. This is assuming that this strategy always fails. I think that is ok because the code discards destinations that are too close to the starting point; I didn't get the T_tot and T_lft ...
+        nS = len(R4)
+        succ = pd.DataFrame({sgy: np.zeros((nS,1))[:,0] for sgy in sgys})
+        fig = plt.figure(figsize=(8,8))
+        for (k, sgy) in enumerate(sgys):
+            ax = fig.add_subplot(2,2,k+1)
+            for iS in range(len(L4)):
+                ax.plot(R4[iS][sgy][0]['cum_rwd'])
+            ax.set_title(sgy.title())
+            ax.set_xlim((0, 35))
+            ax.set_ylim((-20, 50))
+            ax.set_ylabel('Cumulative reward')
+            if k>=2:
+                ax.set_xlabel('Time')
+#        plt.savefig(r'C:\Users\rghiglia\Documents\ML_ND\ML_ND_Projects\smartcab\Rewards_' + dt0 + '_.png', bbox_inches='tight')
     
-    # Would be probably interesting to see the fan of paths if also all the simulations start from the same place
-    global stt0, dst0
-    fig = plt.figure(figsize=(8,8))
+    Eff = T_lft / T_tot
+    succ = 1 - (T_lft==0).sum()/len(T_tot)
+    print "\nEfficiency: "
+    print T_lft / T_tot
+    print "\nSuccess rate: "
+    print succ
+#        succ_rate = succ.sum() / len(succ)
+    
+    from mpl_toolkits.mplot3d import axes3d
+    import matplotlib.pyplot as plt
+    from matplotlib import cm
+    
+    iS = 9
+    
+    fig = plt.figure(figsize=(12,8))
     for (k, sgy) in enumerate(sgys):
-        ax = fig.add_subplot(2,2,k+1)
-        for iS in range(len(L4)):
-            x, y = [], []
-            for z in L4[iS][sgy][0]:
-                x.append(z[0])
-                y.append(z[1])
-            ax.plot(x, y)
-        ax.plot(stt0[0], stt0[1], 'k', marker='o', ms=10, markerfacecolor=None, label='Start')
-        ax.plot(dst0[0], dst0[1], 'k', marker='s', ms=10, markerfacecolor=None, label='Stop' )
-        ax.set_title(sgy)
-        ax.set_xticks(range(10))
-        ax.set_xticks(range(8))
-        ax.set_xlim((0, 10))
-        ax.set_ylim((0, 8))
-    plt.savefig(r'C:\Users\rghiglia\Documents\ML_ND\ML_ND_Projects\smartcab\Paths_20160606_.png', bbox_inches='tight')
+        ax = fig.add_subplot(2,2,k+1, projection='3d')
+        QQ = Q4[iS][sgy][0]     # a list of data frames Q: n_states x n_actions
+        lbls = [st + '_' + a for st in QQ[0].index for a in QQ[0].columns]
+        xs = np.arange(len(lbls))
     
-    tot_time = len(R4[iS]['stubborn'][0]) # this is a shortcut: you should record that properly. This is assuming that this strategy always fails. I think that is ok because the code discards destinations that are too close to the starting point; I didn't get the T_tot and T_lft ...
-    nS = len(R4)
-    succ = pd.DataFrame({sgy: np.zeros((nS,1))[:,0] for sgy in sgys})
-    fig = plt.figure(figsize=(8,8))
-    for (k, sgy) in enumerate(sgys):
-        ax = fig.add_subplot(2,2,k+1)
-        for iS in range(len(L4)):
-            ax.plot(R4[iS][sgy][0]['cum_rwd'])
-            succ.ix[iS, sgy] = 1 if len(R4[iS][sgy][0])<tot_time else 0
-        ax.set_title(sgy.title())
-        ax.set_xlim((0, 35))
-        ax.set_ylim((-20, 50))
-        ax.set_ylabel('Cumulative reward')
-        if k>=2:
-            ax.set_xlabel('Time')
-    plt.savefig(r'C:\Users\rghiglia\Documents\ML_ND\ML_ND_Projects\smartcab\Rewards_20160606_.png', bbox_inches='tight')
-
-    succ_rate = succ.sum() / len(succ)
+        nS_tmp = len(QQ)
+        for k in range(0, nS_tmp, 5):
+            z_tmp = QQ[k].values.flatten()
+            ax.bar(xs[z_tmp>0], z_tmp[z_tmp>0], k, zdir='y', color='b', alpha=0.4)
+            ax.bar(xs[z_tmp<=0], z_tmp[z_tmp<=0], k, zdir='y', color='r', alpha=0.4)
+        plt.xticks(xs, lbls)
+        ax.set_title("Evolution of Q: strategy = %s " % sgy)
+#    plt.savefig(r'C:\Users\rghiglia\Documents\ML_ND\ML_ND_Projects\smartcab\Q_20160606_{}.png'.format(iS), bbox_inches='tight')
     
-#    sns.heatmap(Q[1][0], annot=True, cmap='YlGnBu');
-#    sns.heatmap(Q[1][-1], annot=True, cmap='YlGnBu');
-    
-#    from mpl_toolkits.mplot3d import axes3d
-#    import matplotlib.pyplot as plt
-#    from matplotlib import cm
-#    
-#    
-#    nR, nC = QQ[0][0].shape
-#    X, Y = np.meshgrid(range(nR), range(nC))
-#    # Labels
-#    lbls = [st + '_' + a for st in QQQ['random'][0][0].index for a in QQQ['random'][0][0].columns]
-#    for iSgy, sgy in enumerate(sgys):
-#        Z = QQ[iSgy][-1].T # terminal value of Q(S, a)
-#        print Z
-#        
-#        dx = 0.5 * np.ones_like(Z)
-#        dy = dx.copy()
-#        dz = Z.values
-#        
-#        fig = plt.figure()
-#        ax = fig.gca(projection='3d')
-#        Z0 = np.zeros_like(X)
-#        ax.bar3d(X.flatten() - 0.25, Y.flatten(), Z0.flatten(), \
-#            dx.flatten(), dy.flatten(), dz.flatten(), alpha=0.5)
-#        ax.set_xlim(-0.5, 3.5)
-#        ax.set_ylim(-0.5, 3.5)
-#        plt.xticks(range(nR), Z.columns)
-#        plt.yticks(range(nC), Z.index)
-#        ax.set_title("Q: strategy = %s " % sgy)
-#        ax.set_xlabel('State')
-#        ax.set_ylabel('Action')
-#        ax.set_zlabel('Q')
-#
-#        # To trace evolution of Q function use: QQQ['random'][0][0], QQQ['random'][0][1], ...
-#        # Do a flat 3D bar plot
-#    
-#        # Need to flatten the data
-#        nS_tmp, nStFl = len(QQQ[sgy][0]), np.array(QQQ[sgy][0][0].shape).prod()
-#        Z_flat = np.zeros((nS_tmp, nStFl))
-#        xs = np.arange(nStFl)
-#        z = np.arange(nS_tmp)
-#        
-#        
-#        fig = plt.figure()
-#        ax = fig.add_subplot(111, projection='3d')
-#        for k in range(0, nS_tmp, 5):
-#            Z_flat[k] = QQQ[sgy][0][k].values.flatten()
-#            ax.bar(xs, Z_flat[k], k, zdir='y', color='b', alpha=0.4)
-#        plt.xticks(xs, lbls)
-#        ax.set_title("Evolution of Q: strategy = %s " % sgy)
-
-
     
     

@@ -119,6 +119,11 @@ class Environment(object):
         self.done = False
         self.t = 0
 
+        # Custom
+#        print "Resetting of e being called"
+        self.time_lft = 0
+        self.loc = []
+        
         # Reset traffic lights
         for traffic_light in self.intersections.itervalues():
             traffic_light.reset()
@@ -142,8 +147,11 @@ class Environment(object):
         
         start_heading = random.choice(self.valid_headings)
         deadline = self.compute_dist(start, destination) * 5
-#        print "Environment.reset(): Trial set up with start = {}, destination = {}, deadline = {}".format(start, destination, deadline)
+        print "Environment.reset(): Trial set up with start = {}, destination = {}, deadline = {}".format(start, destination, deadline)
         
+        # Custom
+#        print "Resetting of e being called"
+        self.time_tot = deadline
 #        self.time_tot = deadline
 ##        print "\n***************"
 ##        print "Time tot = %i " % self.time_tot
@@ -160,12 +168,6 @@ class Environment(object):
             agent.reset(destination=(destination if agent is self.primary_agent else None))
 
 
-        # Custom
-        self.time_tot = 0
-        self.time_lft = 0
-        self.stt = (-1, 1)
-        self.dst = (-1, 1)
-        self.loc = []
 
 
 
